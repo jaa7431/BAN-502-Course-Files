@@ -1,0 +1,307 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+
+## Shark Tank Project Pt. 2  
+
+```{r, include = FALSE}
+library(tidyverse)
+library(tidymodels)
+library(glmnet)
+library(GGally)
+library(ggcorrplot)
+library(ranger)
+library(car)
+library(lubridate)
+library(lmtest)
+library(dbplyr)
+library(dplyr)
+library(skimr)
+library(leaps)
+library(splines)
+library(VIM)
+library(mice)
+library(UpSetR)
+library(naniar)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(e1071)
+library(ROCR)
+library(caret)
+```  
+
+```{r}
+Shark = read_csv("shark_student.csv")
+```
+
+
+
+## Recoding 
+```{r}
+ 
+Shark = Shark  %>% mutate(ReceiveOffer = as_factor(ReceiveOffer)) %>% 
+  mutate(ReceiveOffer = fct_recode(ReceiveOffer, "No" = "0", "Yes" = "1" )) %>% mutate(RejectOffer = as_factor(RejectOffer)) %>% 
+  mutate(RejectOffer = fct_recode(RejectOffer, "No" = "0", "Yes" = "1" )) %>% mutate(Deal_Yes = as_factor(Deal_Yes)) %>% 
+  mutate(Deal_Yes = fct_recode(Deal_Yes, "No" = "0", "Yes" = "1" )) %>% mutate(Deal_No = as_factor(Deal_No)) %>% 
+  mutate(Deal_No = fct_recode(Deal_No, "No" = "0", "Yes" = "1" )) %>% mutate(Eth1 = as_factor(Eth1)) %>% mutate(Eth1 = fct_recode(Eth1, "No presenter 1" = "0", "African American" = "1" , "White" = "2" , "Asian" = "3" , "Latino" = "4")) %>% mutate(Eth2 = as_factor(Eth2)) %>% mutate(Eth2 = fct_recode(Eth2, "No presenter 2" = "0", "African American" = "1" , "White" = "2" , "Asian" = "3" , "Latino" = "4")) %>% mutate(Eth3 = as_factor(Eth3)) %>% mutate(Eth3 = fct_recode(Eth3, "No presenter 3" = "0", "African American" = "1" , "White" = "2" , "Asian" = "3" , "Latino" = "4")) %>% mutate(Eth4 = as_factor(Eth4)) %>% mutate(Eth4 = fct_recode(Eth4, "No presenter 4" = "0", "African American" = "1" , "White" = "2" , "Asian" = "3" , "Latino" = "4")) %>% mutate(Eth5 = as_factor(Eth5)) %>% mutate(Eth5 = fct_recode(Eth5, "No presenter 5" = "0", "African American" = "1" , "White" = "2" , "Asian" = "3" , "Latino" = "4")) %>% mutate(Male1 = as_factor(Male1)) %>% 
+  mutate(Male1 = fct_recode(Male1, "No" = "0", "Yes" = "1" )) %>% mutate(Male2 = as_factor(Male2)) %>% 
+  mutate(Male2 = fct_recode(Male2, "No" = "0", "Yes" = "1" )) %>% mutate(Male3 = as_factor(Male3)) %>% 
+  mutate(Male3 = fct_recode(Male3, "No" = "0", "Yes" = "1" )) %>% mutate(Male4 = as_factor(Male4)) %>% 
+  mutate(Male4 = fct_recode(Male4, "No" = "0", "Yes" = "1" )) %>% mutate(Female1 = as_factor(Female1)) %>% 
+  mutate(Female1 = fct_recode(Female1, "No" = "0", "Yes" = "1" )) %>% mutate(Female2 = as_factor(Female2)) %>% 
+  mutate(Female2 = fct_recode(Female2, "No" = "0", "Yes" = "1" )) %>% mutate(Female3 = as_factor(Female3)) %>% 
+  mutate(Female3 = fct_recode(Female3, "No" = "0", "Yes" = "1" )) %>% mutate(Female4 = as_factor(Female4)) %>% 
+  mutate(Female4 = fct_recode(Female4, "No" = "0", "Yes" = "1" )) %>% mutate(Novelties = as_factor(Novelties)) %>% 
+  mutate(Novelties = fct_recode(Novelties, "No" = "0", "Yes" = "1" )) %>% mutate(`Health / Wellness` = as_factor(`Health / Wellness`)) %>% 
+  mutate(`Health / Wellness` = fct_recode(`Health / Wellness`, "No" = "0", "Yes" = "1" )) %>% mutate(`Food and Beverage` = as_factor(`Food and Beverage`)) %>% 
+  mutate(`Food and Beverage` = fct_recode(`Food and Beverage`, "No" = "0", "Yes" = "1" )) %>% mutate(`Business Services` = as_factor(`Business Services`)) %>% 
+  mutate(`Business Services` = fct_recode(`Business Services`, "No" = "0", "Yes" = "1" )) %>% mutate(`Lifestyle / Home` = as_factor(`Lifestyle / Home`)) %>% 
+  mutate(`Lifestyle / Home` = fct_recode(`Lifestyle / Home`, "No" = "0", "Yes" = "1" )) %>% mutate(`Software / Tech` = as_factor(`Software / Tech`)) %>% 
+  mutate(`Software / Tech` = fct_recode(`Software / Tech`, "No" = "0", "Yes" = "1" )) %>% mutate(`Children / Education` = as_factor(`Children / Education`)) %>% 
+  mutate(`Children / Education` = fct_recode(`Children / Education`, "No" = "0", "Yes" = "1" )) %>% mutate(Automotive = as_factor(Automotive)) %>% 
+  mutate(Automotive = fct_recode(Automotive, "No" = "0", "Yes" = "1" )) %>% mutate(`Fashion / Beauty` = as_factor(`Fashion / Beauty`)) %>% 
+  mutate(`Fashion / Beauty` = fct_recode(`Fashion / Beauty`, "No" = "0", "Yes" = "1" )) %>% mutate(`Media / Entertainment` = as_factor(`Media / Entertainment`)) %>% 
+  mutate(`Media / Entertainment` = fct_recode(`Media / Entertainment`, "No" = "0", "Yes" = "1" )) %>% mutate(`Fitness / Sports / Outdoors` = as_factor(`Fitness / Sports / Outdoors`)) %>% 
+  mutate(`Fitness / Sports / Outdoors` = fct_recode(`Fitness / Sports / Outdoors`, "No" = "0", "Yes" = "1" )) %>% mutate(`Pet Products` = as_factor(`Pet Products`)) %>% 
+  mutate(`Pet Products` = fct_recode(`Pet Products`, "No" = "0", "Yes" = "1" )) %>% mutate(Travel = as_factor(Travel)) %>% 
+  mutate(Travel = fct_recode(Travel, "No" = "0", "Yes" = "1" )) %>% mutate(`Green/CleanTech` = as_factor(`Green/CleanTech`)) %>% 
+  mutate(`Green/CleanTech` = fct_recode(`Green/CleanTech`, "No" = "0", "Yes" = "1" )) %>% mutate(`Uncertain / Other` = as_factor(`Uncertain / Other`)) %>% 
+  mutate(`Uncertain / Other` = fct_recode(`Uncertain / Other`, "No" = "0", "Yes" = "1" )) %>% mutate(MalePresenter = as_factor(MalePresenter)) %>% 
+  mutate(MalePresenter = fct_recode(MalePresenter, "No" = "0", "Yes" = "1" )) %>% mutate(FemalePresenter = as_factor(FemalePresenter)) %>% 
+  mutate(FemalePresenter = fct_recode(FemalePresenter, "No" = "0", "Yes" = "1" )) %>% mutate(MixedGenderPresenters = as_factor(MixedGenderPresenters)) %>% 
+  mutate(MixedGenderPresenters = fct_recode(MixedGenderPresenters, "No" = "0", "Yes" = "1" )) %>% mutate(BarbaraCorcoran = as_factor(BarbaraCorcoran)) %>% 
+  mutate(BarbaraCorcoran = fct_recode(BarbaraCorcoran, "No" = "0", "Yes" = "1" )) %>% mutate(MarkCuban = as_factor(MarkCuban)) %>% 
+  mutate(MarkCuban = fct_recode(MarkCuban, "No" = "0", "Yes" = "1" )) %>% mutate(LoriGreiner = as_factor(LoriGreiner)) %>% 
+  mutate(LoriGreiner = fct_recode(LoriGreiner, "No" = "0", "Yes" = "1" )) %>% mutate(RobertHerjavec = as_factor(RobertHerjavec)) %>% 
+  mutate(RobertHerjavec = fct_recode(RobertHerjavec, "No" = "0", "Yes" = "1" )) %>% mutate(DaymondJohn = as_factor(DaymondJohn)) %>% 
+  mutate(DaymondJohn = fct_recode(DaymondJohn, "No" = "0", "Yes" = "1" )) %>% mutate(KevinOLeary = as_factor(KevinOLeary)) %>% 
+  mutate(KevinOLeary = fct_recode(KevinOLeary, "No" = "0", "Yes" = "1" ))  %>% mutate(KevinHarrington = as_factor(KevinHarrington)) %>% 
+  mutate(KevinHarrington = fct_recode(KevinHarrington, "No" = "0", "Yes" = "1" )) %>% mutate(Guest = as_factor(Guest)) %>% 
+  mutate(Guest = fct_recode(Guest, "No" = "0", "Yes" = "1" )) 
+
+  
+```
+```{r}
+Shark = rename(Shark, "NumberofPresenters" = "Number of Presenters" , "HealthWellness" = "Health / Wellness", "FoodandBeverage" = "Food and Beverage", "BusinessServices" = "Business Services", "LifestyleHome" = "Lifestyle / Home", "SoftwareTech" = "Software / Tech", "ChildrenEducation" = "Children / Education", "FashionBeauty" = "Fashion / Beauty", "MediaEntertainment" = "Media / Entertainment", "FitnessSportsOutdoors" = "Fitness / Sports / Outdoors", "PetProducts" = "Pet Products", "UncertainOther" = "Uncertain / Other" , "GreenCleanTech" = "Green/CleanTech" )
+```
+
+```{r}
+Shark = subset(Shark, select = -c(Male4) )
+```
+
+```{r}
+Shark = subset(Shark, select = -c(CompanyState) )
+```
+
+
+## Logistic Regression Models
+
+
+
+
+```{r}
+set.seed(123)
+Shark_split = initial_split(Shark, prob = 0.80, strata = Deal_Yes)
+train = training(Shark_split)
+test = testing(Shark_split)
+```
+
+```{r}
+
+
+Shark_model = 
+  logistic_reg() %>% #note the use of logistic_reg and mode = "classification"
+  set_engine("glm") #standard logistic regression engine is glm
+
+Shark_recipe = recipe(Deal_Yes ~ NumberofPresenters + MixedGenderPresenters + FemalePresenter + MalePresenter + Automotive + PetProducts + SoftwareTech + ChildrenEducation + BusinessServices + LifestyleHome + FoodandBeverage + Eth1 + Eth2 + Eth3 + Eth4 + Male1 + Male2 + Male3 +  Female1 + Female2 + Female3 + Female4 + Novelties + FashionBeauty + MediaEntertainment + FitnessSportsOutdoors + PetProducts + GreenCleanTech + UncertainOther + AmountRequested + EquityRequested , train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+logreg_wf = workflow() %>%
+  add_recipe(Shark_recipe) %>% 
+  add_model(Shark_model)
+
+Shark_fit = fit(logreg_wf, train)
+```
+```{r}
+summary(Shark_fit$fit$fit$fit)
+```
+
+```{r}
+Shark_model2 = 
+  logistic_reg() %>% #note the use of logistic_reg and mode = "classification"
+  set_engine("glm") #standard logistic regression engine is glm
+
+Shark_recipe2 = recipe(Deal_Yes ~  ChildrenEducation + BusinessServices  , train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+logreg_wf = workflow() %>%
+  add_recipe(Shark_recipe2) %>% 
+  add_model(Shark_model2)
+
+Shark_fit2 = fit(logreg_wf, train)
+```
+```{r}
+summary(Shark_fit2$fit$fit$fit) 
+```
+
+```{r}
+Shark_model3 = 
+  logistic_reg() %>% #note the use of logistic_reg and mode = "classification"
+  set_engine("glm") #standard logistic regression engine is glm
+
+Shark_recipe3 = recipe(Deal_Yes ~ EquityRequested  + AmountRequested , train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+logreg_wf = workflow() %>%
+  add_recipe(Shark_recipe3) %>% 
+  add_model(Shark_model3)
+
+Shark_fit3 = fit(logreg_wf, train)
+```
+```{r}
+summary(Shark_fit3$fit$fit$fit) 
+```
+
+```{r}
+Shark_model4 = 
+  logistic_reg() %>% #note the use of logistic_reg and mode = "classification"
+  set_engine("glm") #standard logistic regression engine is glm
+
+Shark_recipe4 = recipe(Deal_Yes ~  BusinessServices  , train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+logreg_wf = workflow() %>%
+  add_recipe(Shark_recipe4) %>% 
+  add_model(Shark_model2)
+
+Shark_fit4 = fit(logreg_wf, train)
+```
+```{r}
+summary(Shark_fit4$fit$fit$fit) 
+```
+
+```{r}
+Shark_model5 = 
+  logistic_reg() %>% #note the use of logistic_reg and mode = "classification"
+  set_engine("glm") #standard logistic regression engine is glm
+
+Shark_recipe5 = recipe(Deal_Yes ~  ChildrenEducation + BusinessServices + LifestyleHome + SoftwareTech , train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+logreg_wf = workflow() %>%
+  add_recipe(Shark_recipe5) %>% 
+  add_model(Shark_model5)
+
+Shark_fit5 = fit(logreg_wf, train)
+```
+```{r}
+summary(Shark_fit5$fit$fit$fit) 
+```
+
+```{r}
+predictions = predict(Shark_fit5, train, type="prob") #develop predicted probabilities
+head(predictions)
+```
+```{r}
+predictions = predict(Shark_fit5, train, type="prob")[2] #develop predicted probabilities
+head(predictions)
+```
+
+
+
+
+
+## Classification Tree
+
+```{r}
+#select only variables relevant to our analysis
+Shark2 = Shark %>% dplyr::select("Deal_Yes","ChildrenEducation","LifestyleHome","SoftwareTech")
+
+set.seed(1234)
+imp_age = mice(Shark2, m=5, method='pmm', printFlag=FALSE)
+summary(imp_age)
+``` 
+
+```{r}
+Shark2_complete = complete(imp_age) 
+summary(Shark2_complete)
+``` 
+
+```{r}
+set.seed(123) 
+Shark2_split = initial_split(Shark2_complete, prop = 0.7, strata = Deal_Yes) #70% in training
+train2 = training(Shark2_split) 
+test2 = testing(Shark2_split)
+```
+
+```{r}
+Shark2_recipe = recipe(Deal_Yes ~ ., train2)
+
+tree_model = decision_tree() %>% 
+  set_engine("rpart", model = TRUE) %>% #don't forget the model = TRUE flag
+  set_mode("classification")
+
+Shark2_wflow = 
+  workflow() %>% 
+  add_model(tree_model) %>% 
+  add_recipe(Shark2_recipe)
+
+Shark2_fit = fit(Shark2_wflow, train2)
+```
+
+```{r}
+#look at the tree's fit
+Shark2_fit %>%
+  pull_workflow_fit() %>%
+  pluck("fit")  
+```
+
+```{r}
+#look at the tree's fit
+Shark2_fit %>%
+  pull_workflow_fit() %>%
+  pluck("fit")  
+```
+```{r}
+#extract the tree's fit from the fit object
+tree = Shark2_fit %>% 
+  pull_workflow_fit() %>% 
+  pluck("fit")
+
+#plot the tree
+rpart.plot(tree)
+```
+## Random Forest
+
+```{r}
+Shark2_recipe = recipe(Deal_Yes ~ ., train2)
+
+rf_model = rand_forest() %>% 
+  set_engine("ranger") %>% 
+  set_mode("classification")
+Shark2_wflow = 
+  workflow() %>% 
+  add_model(tree_model) %>% 
+  add_recipe(Shark2_recipe)
+
+Shark2_fit = fit(Shark2_wflow, train2)
+```
+
+```{r}
+Shark2_fit
+```
+
+Predictions  
+```{r}
+predRF = predict(Shark2_fit, Shark2_complete)
+head(predRF)
+```
+Confusion matrix
+```{r}
+confusionMatrix(predRF$.pred_class, Shark2_complete$Deal_Yes, positive = "Yes")
+```
+
